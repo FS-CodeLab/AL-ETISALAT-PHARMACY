@@ -207,7 +207,7 @@ window.APP_CONFIG={APP_NAME:'صيدلية الاتصالات',API_BASE_URL:API_B
   }
   function productModal(product={}) {
     const editing=!!product.id;
-    openModal(editing?'تعديل صنف':'إضافة صنف', `<form id="productForm" class="modal-form"><label class="full">اسم الصنف *<input name="name" required value="${esc(product.name||'')}"></label><label>الباركود<input name="barcode" value="${esc(product.barcode||'')}"></label><label>التصنيف<input name="category" value="${esc(product.category||'')}"></label><label>سعر الشراء *<input name="purchasePrice" type="number" min="0" step=".01" required value="${esc(product.purchasePrice??'')}"></label><label>سعر البيع *<input name="salePrice" type="number" min="0" step=".01" required value="${esc(product.salePrice??'')}"></label><label>الكمية الافتتاحية<input name="quantity" type="number" min="0" value="${esc(product.quantity??0)}" ${editing?'readonly':''}></label><label>حد التنبيه<input name="reorderLevel" type="number" min="0" value="${esc(product.reorderLevel??5)}"></label><label>تاريخ الصلاحية<input name="expiryDate" type="date" value="${esc(product.expiryDate||'')}"></label><label>الشركة المصنعة<input name="manufacturer" value="${esc(product.manufacturer||'')}"></label></form>`, [
+    openModal(editing?'تعديل صنف':'إضافة صنف', `<form id="productForm" class="modal-form"><label class="full">اسم الصنف *<input name="name" required value="${esc(product.name||'')}"></label><label>الباركود <span class="muted">(امسح بالقارئ)</span><input id="productBarcodeInput" name="barcode" value="${esc(product.barcode||'')}" placeholder="وجّه القارئ إلى الباركود" autocomplete="off" inputmode="none"><small class="muted">اضغط داخل الحقل ثم امسح الباركود بقارئ USB/Bluetooth؛ سيُكتب الرمز تلقائيًا.</small></label><label>التصنيف<input name="category" value="${esc(product.category||'')}"></label><label>سعر الشراء *<input name="purchasePrice" type="number" min="0" step=".01" required value="${esc(product.purchasePrice??'')}"></label><label>سعر البيع *<input name="salePrice" type="number" min="0" step=".01" required value="${esc(product.salePrice??'')}"></label><label>الكمية الافتتاحية<input name="quantity" type="number" min="0" value="${esc(product.quantity??0)}" ${editing?'readonly':''}></label><label>حد التنبيه<input name="reorderLevel" type="number" min="0" value="${esc(product.reorderLevel??5)}"></label><label>تاريخ الصلاحية<input name="expiryDate" type="date" value="${esc(product.expiryDate||'')}"></label><label>الشركة المصنعة<input name="manufacturer" value="${esc(product.manufacturer||'')}"></label></form>`, [
       {label:'إلغاء',run:closeModal}, {label:editing?'حفظ التعديلات':'حفظ الصنف',primary:true,run:async()=>{
         const form=$('productForm'); if(!form.reportValidity()) return; const payload=Object.fromEntries(new FormData(form));
         ['purchasePrice','salePrice','quantity','reorderLevel'].forEach(k=>payload[k]=Number(payload[k]||0)); if(editing)payload.id=product.id;
@@ -215,6 +215,20 @@ window.APP_CONFIG={APP_NAME:'صيدلية الاتصالات',API_BASE_URL:API_B
         catch(e) { toast('فشل الحفظ',e.message,'error'); }
       }}
     ]);
+    // قارئ USB/Bluetooth يتصرف كلوحة مفاتيح: وجّه الإدخال إلى حقل الباركود ولا تسمح لـ Enter باعتماد النموذج.
+    const barcodeInput=$('productBarcodeInput');
+    if(barcodeInput){
+      barcodeInput.focus();
+      barcodeInput.addEventListener('keydown',e=>{
+        if(e.key==='Enter'){
+          e.preventDefault(); e.stopPropagation();
+          const code=barcodeInput.value.trim();
+          if(code) toast('تمت قراءة الباركود','تم إدخال الرمز في خانة الصنف. أكمل البيانات ثم احفظ الصنف.','success');
+          const nameInput=$('productForm')?.elements?.namedItem('name');
+          if(nameInput) nameInput.focus();
+        }
+      });
+    }
   }
   function archiveProduct(id) { openModal('تأكيد أرشفة الصنف','سيتم أرشفة الصنف دون حذف سجل المبيعات السابق.',[{label:'إلغاء',run:closeModal},{label:'تأكيد الأرشفة',primary:true,run:async()=>{try{await call('archiveProduct',{id});closeModal();toast('تمت الأرشفة','تم تنفيذ العملية.');await loadProducts();}catch(e){toast('فشلت الأرشفة',e.message,'error');}}}]); }
   async function loadInventory() {
